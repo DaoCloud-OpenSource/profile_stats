@@ -121,7 +121,8 @@ func NewSource(token string, cache string, interval time.Duration, retry int) *S
 			),
 		}),
 		cliv4: ghv4.NewClient(&http.Client{
-			Transport: httpcache.NewRoundTripper(transport,
+			// graphqlRetry must stay inside httpcache, see its comment.
+			Transport: httpcache.NewRoundTripper(newGraphQLRetry(transport, interval, retry),
 				append([]httpcache.Option{
 					httpcache.WithFilterer(
 						httpcache.MethodFilterer(http.MethodPost),
