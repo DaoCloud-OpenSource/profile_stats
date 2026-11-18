@@ -87,13 +87,22 @@ func (a *Activities) Get(ctx context.Context, w io.Writer, usernames []string, s
 
 	usernames, attrs := utils.KeyAttribute(usernames)
 
+	failed := 0
 	for _, username := range usernames {
 		prs, err := a.source.PullRequests(ctx, username,
 			states,
 			source.IssueOrderFieldCreatedAt, source.OrderDirectionDesc, size,
 			cbs...)
 		if err != nil {
-			return fmt.Errorf("list PullRequests %q: %w", username, err)
+			// Leave this user out instead of failing the whole table: one
+			// renamed account or one API error must not blank the table for
+			// everybody else.
+			failed++
+			if failed == len(usernames) {
+				return fmt.Errorf("list PullRequests failed for all %d users, last %q: %w", failed, username, err)
+			}
+			log.Printf("warning: skip user %q: list PullRequests: %v", username, err)
+			continue
 		}
 
 		var before, after time.Time
